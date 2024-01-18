@@ -30,9 +30,12 @@ func (s *GreetServer) Greet(
 
 func main() {
 	greeter := &GreetServer{}
+	api := http.NewServeMux()
+	api.Handle(greetv1connect.NewGreetServiceHandler(greeter))
+
 	mux := http.NewServeMux()
-	path, handler := greetv1connect.NewGreetServiceHandler(greeter)
-	mux.Handle(path, handler)
+	// mux.Handle("/", newHTMLHandler())
+	mux.Handle("/grpc/", http.StripPrefix("/grpc", api))
 	http.ListenAndServe(
 		"localhost:8080",
 		// Use h2c so we can serve HTTP/2 without TLS.
