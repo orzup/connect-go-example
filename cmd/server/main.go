@@ -16,6 +16,7 @@ import (
 
 type GreetServer struct{}
 
+// Unary RPC
 func (s *GreetServer) Greet(
 	ctx context.Context,
 	req *connect.Request[greetv1.GreetRequest],
