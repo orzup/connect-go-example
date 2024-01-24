@@ -13,5 +13,8 @@ message GreetResponse {
 }
 
 service GreetService {
+	// Unary RPC
 	rpc Greet(GreetRequest) returns (GreetResponse) {}
+	// Client streaming RPC
+	rpc HelloClientStream(stream GreetRequest) returns (GreetResponse) {}
 }

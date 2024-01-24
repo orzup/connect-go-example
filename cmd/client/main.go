@@ -51,7 +51,7 @@ func main() {
 			// HelloServerStream()
 
 		case "3":
-			// HelloClientStream()
+			HelloClientStream()
 
 		case "4":
 			// HelloBiStreams()
@@ -82,4 +82,30 @@ func Hello() {
 		return
 	}
 	log.Println(res.Msg.Greeting)
+}
+
+// Client streaming RPC
+func HelloClientStream() {
+	stream := client.HelloClientStream(context.Background())
+
+	sendCount := 5
+	fmt.Printf("Please enter %d names.\n", sendCount)
+	for i := 0; i < sendCount; i++ {
+		scanner.Scan()
+		name := scanner.Text()
+
+		if err := stream.Send(&greetv1.GreetRequest{
+			Name: name,
+		}); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+
+	res, err := stream.CloseAndReceive()
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(res.Msg.Greeting)
+	}
 }
