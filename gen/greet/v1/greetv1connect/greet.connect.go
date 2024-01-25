@@ -35,6 +35,9 @@ const (
 const (
 	// GreetServiceGreetProcedure is the fully-qualified name of the GreetService's Greet RPC.
 	GreetServiceGreetProcedure = "/greet.v1.GreetService/Greet"
+	// GreetServiceHelloServerStreamProcedure is the fully-qualified name of the GreetService's
+	// HelloServerStream RPC.
+	GreetServiceHelloServerStreamProcedure = "/greet.v1.GreetService/HelloServerStream"
 	// GreetServiceHelloClientStreamProcedure is the fully-qualified name of the GreetService's
 	// HelloClientStream RPC.
 	GreetServiceHelloClientStreamProcedure = "/greet.v1.GreetService/HelloClientStream"
@@ -44,13 +47,17 @@ const (
 var (
 	greetServiceServiceDescriptor                 = v1.File_greet_v1_greet_proto.Services().ByName("GreetService")
 	greetServiceGreetMethodDescriptor             = greetServiceServiceDescriptor.Methods().ByName("Greet")
+	greetServiceHelloServerStreamMethodDescriptor = greetServiceServiceDescriptor.Methods().ByName("HelloServerStream")
 	greetServiceHelloClientStreamMethodDescriptor = greetServiceServiceDescriptor.Methods().ByName("HelloClientStream")
 )
 
 // GreetServiceClient is a client for the greet.v1.GreetService service.
 type GreetServiceClient interface {
+	// Unary RPC
 	Greet(context.Context, *connect.Request[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error)
-	// クライアントストリーミング
+	// Server streaming RPC
+	HelloServerStream(context.Context, *connect.Request[v1.GreetRequest]) (*connect.ServerStreamForClient[v1.GreetResponse], error)
+	// Client streaming RPC
 	HelloClientStream(context.Context) *connect.ClientStreamForClient[v1.GreetRequest, v1.GreetResponse]
 }
 
@@ -70,6 +77,12 @@ func NewGreetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(greetServiceGreetMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		helloServerStream: connect.NewClient[v1.GreetRequest, v1.GreetResponse](
+			httpClient,
+			baseURL+GreetServiceHelloServerStreamProcedure,
+			connect.WithSchema(greetServiceHelloServerStreamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		helloClientStream: connect.NewClient[v1.GreetRequest, v1.GreetResponse](
 			httpClient,
 			baseURL+GreetServiceHelloClientStreamProcedure,
@@ -82,12 +95,18 @@ func NewGreetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // greetServiceClient implements GreetServiceClient.
 type greetServiceClient struct {
 	greet             *connect.Client[v1.GreetRequest, v1.GreetResponse]
+	helloServerStream *connect.Client[v1.GreetRequest, v1.GreetResponse]
 	helloClientStream *connect.Client[v1.GreetRequest, v1.GreetResponse]
 }
 
 // Greet calls greet.v1.GreetService.Greet.
 func (c *greetServiceClient) Greet(ctx context.Context, req *connect.Request[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error) {
 	return c.greet.CallUnary(ctx, req)
+}
+
+// HelloServerStream calls greet.v1.GreetService.HelloServerStream.
+func (c *greetServiceClient) HelloServerStream(ctx context.Context, req *connect.Request[v1.GreetRequest]) (*connect.ServerStreamForClient[v1.GreetResponse], error) {
+	return c.helloServerStream.CallServerStream(ctx, req)
 }
 
 // HelloClientStream calls greet.v1.GreetService.HelloClientStream.
@@ -97,8 +116,11 @@ func (c *greetServiceClient) HelloClientStream(ctx context.Context) *connect.Cli
 
 // GreetServiceHandler is an implementation of the greet.v1.GreetService service.
 type GreetServiceHandler interface {
+	// Unary RPC
 	Greet(context.Context, *connect.Request[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error)
-	// クライアントストリーミング
+	// Server streaming RPC
+	HelloServerStream(context.Context, *connect.Request[v1.GreetRequest], *connect.ServerStream[v1.GreetResponse]) error
+	// Client streaming RPC
 	HelloClientStream(context.Context, *connect.ClientStream[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error)
 }
 
@@ -114,6 +136,12 @@ func NewGreetServiceHandler(svc GreetServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(greetServiceGreetMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	greetServiceHelloServerStreamHandler := connect.NewServerStreamHandler(
+		GreetServiceHelloServerStreamProcedure,
+		svc.HelloServerStream,
+		connect.WithSchema(greetServiceHelloServerStreamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	greetServiceHelloClientStreamHandler := connect.NewClientStreamHandler(
 		GreetServiceHelloClientStreamProcedure,
 		svc.HelloClientStream,
@@ -124,6 +152,8 @@ func NewGreetServiceHandler(svc GreetServiceHandler, opts ...connect.HandlerOpti
 		switch r.URL.Path {
 		case GreetServiceGreetProcedure:
 			greetServiceGreetHandler.ServeHTTP(w, r)
+		case GreetServiceHelloServerStreamProcedure:
+			greetServiceHelloServerStreamHandler.ServeHTTP(w, r)
 		case GreetServiceHelloClientStreamProcedure:
 			greetServiceHelloClientStreamHandler.ServeHTTP(w, r)
 		default:
@@ -137,6 +167,10 @@ type UnimplementedGreetServiceHandler struct{}
 
 func (UnimplementedGreetServiceHandler) Greet(context.Context, *connect.Request[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("greet.v1.GreetService.Greet is not implemented"))
+}
+
+func (UnimplementedGreetServiceHandler) HelloServerStream(context.Context, *connect.Request[v1.GreetRequest], *connect.ServerStream[v1.GreetResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("greet.v1.GreetService.HelloServerStream is not implemented"))
 }
 
 func (UnimplementedGreetServiceHandler) HelloClientStream(context.Context, *connect.ClientStream[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error) {

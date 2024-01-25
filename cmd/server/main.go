@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
@@ -43,6 +44,24 @@ func main() {
 		// Use h2c so we can serve HTTP/2 without TLS.
 		h2c.NewHandler(mux, &http2.Server{}),
 	)
+}
+
+// Server streaming RPC
+func (s *GreetServer) HelloServerStream(
+	ctx context.Context,
+	req *connect.Request[greetv1.GreetRequest],
+	stream *connect.ServerStream[greetv1.GreetResponse],
+) error {
+	resCount := 5
+	for i := 0; i < resCount; i++ {
+		if err := stream.Send(&greetv1.GreetResponse{
+			Greeting: fmt.Sprintf("[%d] Hello, %s!", i, req.Msg.Name),
+		}); err != nil {
+			return err
+		}
+		time.Sleep(time.Second * 1)
+	}
+	return nil
 }
 
 // Client streaming RPC

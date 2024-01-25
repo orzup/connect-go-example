@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"bufio"
 	"os"
+	// "errors"
+	// "io"
 
 	greetv1 "example/gen/greet/v1"
 	"example/gen/greet/v1/greetv1connect"
@@ -48,7 +50,7 @@ func main() {
 			Hello()
 
 		case "2":
-			// HelloServerStream()
+			HelloServerStream()
 
 		case "3":
 			HelloClientStream()
@@ -82,6 +84,27 @@ func Hello() {
 		return
 	}
 	log.Println(res.Msg.Greeting)
+}
+
+// Server streaming RPC
+func HelloServerStream() {
+	fmt.Println("Please enter your name.")
+	scanner.Scan()
+	name := scanner.Text()
+
+	req := &greetv1.GreetRequest{
+		Name: name,
+	}
+	stream, err := client.HelloServerStream(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	for stream.Receive() {
+		fmt.Println(stream.Msg().Greeting)
+	}
+	stream.Close()
 }
 
 // Client streaming RPC
