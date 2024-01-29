@@ -1,24 +1,24 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"fmt"
-	"bufio"
 	"os"
-	// "errors"
-	// "io"
+
+	"connectrpc.com/connect"
 
 	greetv1 "example/gen/greet/v1"
 	"example/gen/greet/v1/greetv1connect"
-
-	"connectrpc.com/connect"
 )
 
 var (
 	scanner *bufio.Scanner
-	client greetv1connect.GreetServiceClient
+	client  greetv1connect.GreetServiceClient
 )
 
 func main() {
