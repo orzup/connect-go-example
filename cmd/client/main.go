@@ -30,7 +30,7 @@ func main() {
 	// クライアントを生成
 	client = greetv1connect.NewGreetServiceClient(
 		http.DefaultClient,
-		"http://localhost:8080/grpc",
+		"http://localhost:8080",
 		connect.WithGRPC(),
 	)
 
