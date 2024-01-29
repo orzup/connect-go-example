@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"connectrpc.com/grpcreflect"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
@@ -36,6 +37,11 @@ func (s *GreetServer) Greet(
 func main() {
 	greeter := &GreetServer{}
 	mux := http.NewServeMux()
+	reflector := grpcreflect.NewStaticReflector(
+		"greet.v1.GreetService",
+	)
+	mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 	path, handler := greetv1connect.NewGreetServiceHandler(greeter)
 	mux.Handle(path, handler)
 	http.ListenAndServe(
