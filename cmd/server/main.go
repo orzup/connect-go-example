@@ -57,6 +57,7 @@ func (s *GreetServer) HelloServerStream(
 	req *connect.Request[greetv1.GreetRequest],
 	stream *connect.ServerStream[greetv1.GreetResponse],
 ) error {
+	log.Println("Request headers: ", req.Header())
 	resCount := 5
 	for i := 0; i < resCount; i++ {
 		if err := stream.Send(&greetv1.GreetResponse{
@@ -90,4 +91,27 @@ func (s *GreetServer) HelloClientStream(
 	})
 	res.Header().Set("Greet-Version", "v1")
 	return res, nil
+}
+
+// Bidirectional streaming RPC
+func (s *GreetServer) HelloBidiStream(
+	ctx context.Context,
+	stream *connect.BidiStream[greetv1.GreetRequest, greetv1.GreetResponse],
+) error {
+	log.Println("Request headers: ", stream.RequestHeader())
+	for {
+		req, err := stream.Receive()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		message := fmt.Sprintf("Hello, %v!", req.Name)
+		if err := stream.Send(&greetv1.GreetResponse{
+			Greeting: message,
+		}); err != nil {
+			return err
+		}
+	}
 }

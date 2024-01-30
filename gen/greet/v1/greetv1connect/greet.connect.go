@@ -41,6 +41,9 @@ const (
 	// GreetServiceHelloClientStreamProcedure is the fully-qualified name of the GreetService's
 	// HelloClientStream RPC.
 	GreetServiceHelloClientStreamProcedure = "/greet.v1.GreetService/HelloClientStream"
+	// GreetServiceHelloBidiStreamProcedure is the fully-qualified name of the GreetService's
+	// HelloBidiStream RPC.
+	GreetServiceHelloBidiStreamProcedure = "/greet.v1.GreetService/HelloBidiStream"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -49,6 +52,7 @@ var (
 	greetServiceGreetMethodDescriptor             = greetServiceServiceDescriptor.Methods().ByName("Greet")
 	greetServiceHelloServerStreamMethodDescriptor = greetServiceServiceDescriptor.Methods().ByName("HelloServerStream")
 	greetServiceHelloClientStreamMethodDescriptor = greetServiceServiceDescriptor.Methods().ByName("HelloClientStream")
+	greetServiceHelloBidiStreamMethodDescriptor   = greetServiceServiceDescriptor.Methods().ByName("HelloBidiStream")
 )
 
 // GreetServiceClient is a client for the greet.v1.GreetService service.
@@ -59,6 +63,8 @@ type GreetServiceClient interface {
 	HelloServerStream(context.Context, *connect.Request[v1.GreetRequest]) (*connect.ServerStreamForClient[v1.GreetResponse], error)
 	// Client streaming RPC
 	HelloClientStream(context.Context) *connect.ClientStreamForClient[v1.GreetRequest, v1.GreetResponse]
+	// Bidirectional streaming RPC
+	HelloBidiStream(context.Context) *connect.BidiStreamForClient[v1.GreetRequest, v1.GreetResponse]
 }
 
 // NewGreetServiceClient constructs a client for the greet.v1.GreetService service. By default, it
@@ -89,6 +95,12 @@ func NewGreetServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(greetServiceHelloClientStreamMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		helloBidiStream: connect.NewClient[v1.GreetRequest, v1.GreetResponse](
+			httpClient,
+			baseURL+GreetServiceHelloBidiStreamProcedure,
+			connect.WithSchema(greetServiceHelloBidiStreamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -97,6 +109,7 @@ type greetServiceClient struct {
 	greet             *connect.Client[v1.GreetRequest, v1.GreetResponse]
 	helloServerStream *connect.Client[v1.GreetRequest, v1.GreetResponse]
 	helloClientStream *connect.Client[v1.GreetRequest, v1.GreetResponse]
+	helloBidiStream   *connect.Client[v1.GreetRequest, v1.GreetResponse]
 }
 
 // Greet calls greet.v1.GreetService.Greet.
@@ -114,6 +127,11 @@ func (c *greetServiceClient) HelloClientStream(ctx context.Context) *connect.Cli
 	return c.helloClientStream.CallClientStream(ctx)
 }
 
+// HelloBidiStream calls greet.v1.GreetService.HelloBidiStream.
+func (c *greetServiceClient) HelloBidiStream(ctx context.Context) *connect.BidiStreamForClient[v1.GreetRequest, v1.GreetResponse] {
+	return c.helloBidiStream.CallBidiStream(ctx)
+}
+
 // GreetServiceHandler is an implementation of the greet.v1.GreetService service.
 type GreetServiceHandler interface {
 	// Unary RPC
@@ -122,6 +140,8 @@ type GreetServiceHandler interface {
 	HelloServerStream(context.Context, *connect.Request[v1.GreetRequest], *connect.ServerStream[v1.GreetResponse]) error
 	// Client streaming RPC
 	HelloClientStream(context.Context, *connect.ClientStream[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error)
+	// Bidirectional streaming RPC
+	HelloBidiStream(context.Context, *connect.BidiStream[v1.GreetRequest, v1.GreetResponse]) error
 }
 
 // NewGreetServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -148,6 +168,12 @@ func NewGreetServiceHandler(svc GreetServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(greetServiceHelloClientStreamMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	greetServiceHelloBidiStreamHandler := connect.NewBidiStreamHandler(
+		GreetServiceHelloBidiStreamProcedure,
+		svc.HelloBidiStream,
+		connect.WithSchema(greetServiceHelloBidiStreamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/greet.v1.GreetService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GreetServiceGreetProcedure:
@@ -156,6 +182,8 @@ func NewGreetServiceHandler(svc GreetServiceHandler, opts ...connect.HandlerOpti
 			greetServiceHelloServerStreamHandler.ServeHTTP(w, r)
 		case GreetServiceHelloClientStreamProcedure:
 			greetServiceHelloClientStreamHandler.ServeHTTP(w, r)
+		case GreetServiceHelloBidiStreamProcedure:
+			greetServiceHelloBidiStreamHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -175,4 +203,8 @@ func (UnimplementedGreetServiceHandler) HelloServerStream(context.Context, *conn
 
 func (UnimplementedGreetServiceHandler) HelloClientStream(context.Context, *connect.ClientStream[v1.GreetRequest]) (*connect.Response[v1.GreetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("greet.v1.GreetService.HelloClientStream is not implemented"))
+}
+
+func (UnimplementedGreetServiceHandler) HelloBidiStream(context.Context, *connect.BidiStream[v1.GreetRequest, v1.GreetResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("greet.v1.GreetService.HelloBidiStream is not implemented"))
 }
